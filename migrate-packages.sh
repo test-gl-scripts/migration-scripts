@@ -7,76 +7,219 @@ SOURCE_USERNAME=""
 DEST_USERNAME=""
 SOURCE_PAT=""
 DEST_PAT=""
+
 # All Package Tyes
 PACKAGE_TYPES=("container" "npm" "maven" "ruby" "nuget" "gradle")
 
-# Log in to Docker with the source and destination credentials
-echo "$SOURCE_PAT" | docker login ghcr.io -u "$SOURCE_USERNAME" --password-stdin
-echo "$DEST_PAT" | docker login ghcr.io -u "$DEST_USERNAME" --password-stdin
+echo $SOURCE_PAT | gh auth login --with-token
+echo $DEST_PAT | gh auth login --with-token
 
+copy_container_package() {
+    local PACKAGE=$1
+    local VERSION=$2
+    if [[ $VERSION == sha256:* ]]; then
+        echo "Skipping digest format for $PACKAGE:$VERSION"
+        return
+    fi
+    IMAGE="ghcr.io/$SOURCE_ORG/$PACKAGE:$VERSION"
+    echo "Pulling $IMAGE"
+    docker pull "$IMAGE"
+    NEW_IMAGE="ghcr.io/$DEST_ORG/$PACKAGE:$VERSION"
+    echo "Tagging $IMAGE as $NEW_IMAGE"
+    docker tag "$IMAGE" "$NEW_IMAGE"
+    echo "Pushing $NEW_IMAGE"
+    docker push "$NEW_IMAGE"
+}
+
+copy_npm_package() {
+    local PACKAGE=$1
+    local VERSION=$2
+    echo "Packing $PACKAGE@$VERSION..."
+    npm pack "@$SOURCE_ORG/$PACKAGE@$VERSION" --registry "https://npm.pkg.github.com"
+    if [ $? -ne 0 ]; then
+        echo "npm pack failed for $PACKAGE@$VERSION."
+        return 1
+    fi
+    TAR_FILE=$(find . -maxdepth 1 -type f -name "*$PACKAGE-$VERSION*.tgz" -print -quit)
+    if [ -z "$TAR_FILE" ]; then
+        echo "Failed to create tarball for $PACKAGE@$VERSION."
+        return 1
+    fi
+    echo "Publishing $PACKAGE@$VERSION to $DEST_ORG..."
+    npm publish --registry "https://npm.pkg.github.com/$DEST_ORG" "$TAR_FILE"
+    if [ $? -ne 0 ]; then
+        echo "npm publish failed for $PACKAGE@$VERSION."
+        return 1
+    fi
+}
+
+# TODO: Validate
+copy_maven_package() {
+    local PACKAGE=$1
+    local VERSIONS_JSON=$2
+    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | .name' 2>/dev/null)
+    if [ -z "$VERSIONS" ]; then
+        echo "No versions found or failed to fetch versions for package $PACKAGE."
+        return
+    fi
+    for VERSION in $VERSIONS; do
+        echo "Fetching artifact for $PACKAGE@$VERSION..."
+        ARTIFACT_URL=$(curl -s -H "Authorization: token $SOURCE_PAT" \
+            "https://api.github.com/orgs/$SOURCE_ORG/packages/maven/$PACKAGE/versions/$VERSION" | jq -r '.dist.tarball')
+        if [ -z "$ARTIFACT_URL" ]; then
+            echo "No artifact found for $PACKAGE@$VERSION."
+            continue
+        fi
+        echo "Downloading artifact from $ARTIFACT_URL..."
+        curl -s -L -H "Authorization: token $SOURCE_PAT" -o "$PACKAGE-$VERSION.jar" "$ARTIFACT_URL"
+        echo "Publishing $PACKAGE@$VERSION to $DEST_ORG..."
+        # TODO: Use a Maven command to publish the artifact to the destination organization (details would depend on Maven setup)
+        # groupId (customize for our orgs):
+        mvn deploy:deploy-file -DgroupId=your.groupId -DartifactId=$PACKAGE -Dversion=$VERSION -Dpackaging=jar -Dfile="$PACKAGE-$VERSION.jar" -Durl=https://maven.pkg.github.com/$DEST_ORG
+        echo "Cleaning up $PACKAGE-$VERSION.jar..."
+        rm "$PACKAGE-$VERSION.jar"
+    done
+}
+
+# TODO: Validate
+copy_ruby_package() {
+    local PACKAGE=$1
+    local VERSIONS_JSON=$2
+    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | .name' 2>/dev/null)
+    if [ -z "$VERSIONS" ]; then
+        echo "No versions found or failed to fetch versions for package $PACKAGE."
+        return
+    fi
+    for VERSION in $VERSIONS; do
+        echo "Fetching gem for $PACKAGE@$VERSION..."
+        GEM_URL=$(curl -s -H "Authorization: token $SOURCE_PAT" \
+            "https://api.github.com/orgs/$SOURCE_ORG/packages/ruby/$PACKAGE/versions/$VERSION" | jq -r '.dist.tarball')
+        if [ -z "$GEM_URL" ]; then
+            echo "No gem found for $PACKAGE@$VERSION."
+            continue
+        fi
+        echo "Downloading gem from $GEM_URL..."
+        curl -s -L -H "Authorization: token $SOURCE_PAT" -o "$PACKAGE-$VERSION.gem" "$GEM_URL"
+        echo "Publishing $PACKAGE@$VERSION to $DEST_ORG..."
+        gem push --host https://rubygems.pkg.github.com/$DEST_ORG "$PACKAGE-$VERSION.gem"
+        echo "Cleaning up $PACKAGE-$VERSION.gem..."
+        rm "$PACKAGE-$VERSION.gem"
+    done
+}
+
+# TODO: Validate
+copy_nuget_package() {
+    local PACKAGE=$1
+    local VERSIONS_JSON=$2
+    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | .name' 2>/dev/null)
+    if [ -z "$VERSIONS" ]; then
+        echo "No versions found or failed to fetch versions for package $PACKAGE."
+        return
+    fi
+    for VERSION in $VERSIONS; do
+        echo "Fetching nupkg for $PACKAGE@$VERSION..."
+        NUPKG_URL=$(curl -s -H "Authorization: token $SOURCE_PAT" \
+            "https://api.github.com/orgs/$SOURCE_ORG/packages/nuget/$PACKAGE/versions/$VERSION" | jq -r '.dist.tarball')
+        if [ -z "$NUPKG_URL" ]; then
+            echo "No nupkg found for $PACKAGE@$VERSION."
+            continue
+        fi
+        echo "Downloading nupkg from $NUPKG_URL..."
+        curl -s -L -H "Authorization: token $SOURCE_PAT" -o "$PACKAGE-$VERSION.nupkg" "$NUPKG_URL"
+        echo "Publishing $PACKAGE@$VERSION to $DEST_ORG..."
+        nuget push "$PACKAGE-$VERSION.nupkg" -Source https://nuget.pkg.github.com/$DEST_ORG
+        echo "Cleaning up $PACKAGE-$VERSION.nupkg..."
+        rm "$PACKAGE-$VERSION.nupkg"
+    done
+}
+
+# TODO: Validate
+copy_gradle_package() {
+    local PACKAGE=$1
+    local VERSIONS_JSON=$2
+    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | .name' 2>/dev/null)
+    if [ -z "$VERSIONS" ]; then
+        echo "No versions found or failed to fetch versions for package $PACKAGE."
+        return
+    fi
+    for VERSION in $VERSIONS; do
+        echo "Fetching artifact for $PACKAGE@$VERSION..."
+        ARTIFACT_URL=$(curl -s -H "Authorization: token $SOURCE_PAT" \
+            "https://api.github.com/orgs/$SOURCE_ORG/packages/gradle/$PACKAGE/versions/$VERSION" | jq -r '.dist.tarball')
+        if [ -z "$ARTIFACT_URL" ]; then
+            echo "No artifact found for $PACKAGE@$VERSION."
+            continue
+        fi
+        echo "Downloading artifact from $ARTIFACT_URL..."
+        curl -s -L -H "Authorization: token $SOURCE_PAT" -o "$PACKAGE-$VERSION.jar" "$ARTIFACT_URL"
+        echo "Publishing $PACKAGE@$VERSION to $DEST_ORG..."
+        # TODO: Use a Gradle command to publish the artifact to the destination organization
+        # groupId (for our orgs):
+        ./gradlew publish -PgroupId=your.groupId -PartifactId=$PACKAGE -Pversion=$VERSION -Ppackaging=jar -Pfile="$PACKAGE-$VERSION.jar" -Durl=https://gradle.pkg.github.com/$DEST_ORG
+        echo "Cleaning up $PACKAGE-$VERSION.jar..."
+        rm "$PACKAGE-$VERSION.jar"
+    done
+}
+
+# TODO: Validate
 for PACKAGE_TYPE in "${PACKAGE_TYPES[@]}"; do
     PAGE=1
     TOTAL_PAGES=1
-
     while [ $PAGE -le $TOTAL_PAGES ]; do
         echo "Fetching $PACKAGE_TYPE packages from $SOURCE_ORG (Page $PAGE)..."
-        
         RESPONSE=$(curl -s -H "Authorization: token $SOURCE_PAT" \
             "https://api.github.com/orgs/$SOURCE_ORG/packages?package_type=$PACKAGE_TYPE&per_page=100&page=$PAGE")
-
         if echo "$RESPONSE" | grep -q '"message": "Not Found"'; then
             echo "Error: Not Found for package type $PACKAGE_TYPE. Check your organization or package type."
             break
         fi
-
         PACKAGES=$(echo "$RESPONSE" | grep -Po '"name": *\K"[^"]*"' | tr -d '"')
-
         if [ -z "$PACKAGES" ]; then
             echo "No packages found or failed to fetch packages for type $PACKAGE_TYPE."
             break
         fi
-
         if [ $PAGE -eq 1 ]; then
-            TOTAL_PAGES=$(echo "$RESPONSE" | grep -oP '"last_page": *\K[0-9]+' || echo 1)
+            TOTAL_PAGES=$(echo "$RESPONSE" | grep -i 'rel="last"' | grep -oP 'page=\K\d+')
+            TOTAL_PAGES=${TOTAL_PAGES:-1}
         fi
-
         for PACKAGE in $PACKAGES; do
+            echo "Fetching versions for package $PACKAGE..."
             ENCODED_PACKAGE=$(echo "$PACKAGE" | sed 's/\//%2F/g')
-
-            VERSIONS_JSON=$(curl -s -H "Authorization: token $SOURCE_PAT" \
-                "https://api.github.com/orgs/$SOURCE_ORG/packages/$PACKAGE_TYPE/$ENCODED_PACKAGE/versions")
-
-            # echo "Raw JSON response for $PACKAGE: $VERSIONS_JSON"
-
-            if echo "$VERSIONS_JSON" | grep -q '"message": "Not Found"'; then
-                echo "Error: Not Found for package $PACKAGE. Check the package name and type."
+            VERSIONS_RESPONSE=$(gh api -H "Accept: application/vnd.github.v3+json" orgs/$SOURCE_ORG/packages/$PACKAGE_TYPE/$ENCODED_PACKAGE/versions)
+            if [ $? -ne 0 ]; then
+                echo "Failed to fetch versions for $PACKAGE."
                 continue
             fi
-
-            VERSIONS=$(echo "$VERSIONS_JSON" | jq -r '.[] | select(.metadata != null) | .metadata.container.tags[]' 2>/dev/null)
-
-            if [ -z "$VERSIONS" ]; then
-                continue
-            fi
-
-            for VERSION in $VERSIONS; do
-                if [[ $VERSION == sha256:* ]]; then
-                    continue
-                fi
-
-                IMAGE="ghcr.io/$SOURCE_ORG/$PACKAGE:$VERSION"
-                echo "Pulling $IMAGE"
-                docker pull "$IMAGE"
-
-                NEW_IMAGE="ghcr.io/$DEST_ORG/$PACKAGE:$VERSION"
-                echo "Tagging $IMAGE as $NEW_IMAGE"
-                docker tag "$IMAGE" "$NEW_IMAGE"
-
-                echo "Pushing $NEW_IMAGE"
-                docker push "$NEW_IMAGE"
-            done
+            case $PACKAGE_TYPE in
+                container)
+                    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | select(.metadata != null) | .metadata.container.tags[]' 2>/dev/null)
+                    for VERSION in $VERSIONS; do
+                        copy_container_package "$PACKAGE" "$VERSION"
+                    done
+                    ;;
+                npm)
+                    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | .name')
+                    for VERSION in $VERSIONS; do
+                        copy_npm_package "$PACKAGE" "$VERSION"
+                    done
+                    ;;
+                maven)
+                    copy_maven_package "$PACKAGE" "$VERSIONS_RESPONSE"
+                    ;;
+                ruby)
+                    copy_ruby_package "$PACKAGE" "$VERSIONS_RESPONSE"
+                    ;;
+                nuget)
+                    copy_nuget_package "$PACKAGE" "$VERSIONS_RESPONSE"
+                    ;;
+                gradle)
+                    copy_gradle_package "$PACKAGE" "$VERSIONS_RESPONSE"
+                    ;;
+                *)
+                    echo "Unsupported package type: $PACKAGE_TYPE"
+                    ;;
+            esac
         done
-
         PAGE=$((PAGE + 1))
     done
 done
