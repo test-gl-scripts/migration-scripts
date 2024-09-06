@@ -107,30 +107,24 @@ copy_ruby_package() {
     done
 }
 
-# TODO: Validate
 copy_nuget_package() {
     local PACKAGE=$1
     local VERSIONS_JSON=$2
-    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | .name' 2>/dev/null)
-    if [ -z "$VERSIONS" ]; then
-        echo "No versions found or failed to fetch versions for package $PACKAGE."
+    echo "Fetching nupkg for $PACKAGE@$VERSION..."
+    url="https://nuget.pkg.github.com/$SOURCE_ORG/download/$PACKAGE/$VERSION/$PACKAGE.$VERSION.nupkg"
+
+    if [ -z "$url" ]; then
+        echo "No nupkg found for $PACKAGE@$VERSION."
         return
     fi
-    for VERSION in $VERSIONS; do
-        echo "Fetching nupkg for $PACKAGE@$VERSION..."
-        NUPKG_URL=$(curl -s -H "Authorization: token $SOURCE_PAT" \
-            "https://api.github.com/orgs/$SOURCE_ORG/packages/nuget/$PACKAGE/versions/$VERSION" | jq -r '.dist.tarball')
-        if [ -z "$NUPKG_URL" ]; then
-            echo "No nupkg found for $PACKAGE@$VERSION."
-            continue
-        fi
-        echo "Downloading nupkg from $NUPKG_URL..."
-        curl -s -L -H "Authorization: token $SOURCE_PAT" -o "$PACKAGE-$VERSION.nupkg" "$NUPKG_URL"
-        echo "Publishing $PACKAGE@$VERSION to $DEST_ORG..."
-        nuget push "$PACKAGE-$VERSION.nupkg" -Source https://nuget.pkg.github.com/$DEST_ORG
-        echo "Cleaning up $PACKAGE-$VERSION.nupkg..."
-        rm "$PACKAGE-$VERSION.nupkg"
-    done
+    echo "Downloading nupkg from $url..."
+    curl -s -L -H "Authorization: token $SOURCE_PAT" -o "$PACKAGE-$VERSION.nupkg" "$url"
+    echo "Publishing $PACKAGE@$VERSION to $DEST_ORG..."
+#    nuget setApiKey $DEST_PAT -Source "https://nuget.pkg.github.com/$DEST_ORG/index.json"
+    dotnet nuget push $PACKAGE-$VERSION.nupkg --source "https://nuget.pkg.github.com/$DEST_ORG/index.json" --api-key $DEST_PAT
+
+    echo "Cleaning up $PACKAGE-$VERSION.nupkg..."
+    rm "$PACKAGE-$VERSION.nupkg"
 }
 
 # TODO: Validate
@@ -210,7 +204,10 @@ for PACKAGE_TYPE in "${PACKAGE_TYPES[@]}"; do
                     copy_ruby_package "$PACKAGE" "$VERSIONS_RESPONSE"
                     ;;
                 nuget)
-                    copy_nuget_package "$PACKAGE" "$VERSIONS_RESPONSE"
+                    VERSIONS=$(echo "$VERSIONS_RESPONSE" | jq -r '.[] | .name')
+                    for VERSION in $VERSIONS; do
+                        copy_nuget_package "$PACKAGE" "$VERSION"
+                    done
                     ;;
                 gradle)
                     copy_gradle_package "$PACKAGE" "$VERSIONS_RESPONSE"
