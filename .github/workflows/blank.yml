@@ -14,7 +14,7 @@ jobs:
       - name: Set up system variables
         run: |
           echo "GH_SOURCE_PAT=${{ secrets.SRC_PAT }}" >> $GITHUB_ENV
-          echo "GH_DEST_PAT=${{ secrets.DEST_PAT }}" >> $GITHUB_ENV
+          echo "GH_TARGET_PAT=${{ secrets.DEST_PAT }}" >> $GITHUB_ENV
 
       - name: Execute migration script
         run: |
