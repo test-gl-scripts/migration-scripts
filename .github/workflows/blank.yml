@@ -19,4 +19,4 @@ jobs:
       - name: Execute migration script
         run: |
           chmod +x path/to/migrate-nuget-packages-between-orgs.sh
-          ./migrate-nuget-packages-between-orgs.sh
+          ./migrate-nuget-packages-between-orgs.sh ${{ secrets.SRC_ORG }} github.com ${{ secrets.DEST_ORG }}
