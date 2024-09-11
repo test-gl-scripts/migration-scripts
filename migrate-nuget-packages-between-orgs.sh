@@ -65,10 +65,14 @@ echo "$packages" | while IFS= read -r response; do
   repoName=$(echo "$response" | cut -d ' ' -f 2)
 
   echo "$repoName --> $packageName"
-  
+
   versions=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api "orgs/$SOURCE_ORG/packages/nuget/$packageName/versions" --paginate -q '.[] | .name')
-  for version in $versions
+  versionArray=($versions)
+
+  # Reverse the array
+  for ((i=${#versionArray[@]}-1; i>=0; i--));
   do
+  version="${versionArray[$i]}"
     echo "$version"
     url="https://nuget.pkg.$SOURCE_HOST/$SOURCE_ORG/download/$packageName/$version/$packageName.$version.nupkg"
     echo $url
