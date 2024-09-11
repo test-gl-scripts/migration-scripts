@@ -19,4 +19,4 @@ jobs:
       - name: Execute migration script
         run: |
           chmod +x path/to/migrate-nuget-packages-between-orgs.sh
-          ./path/to/migrate-nuget-packages-between-orgs.sh
+          ./migrate-nuget-packages-between-orgs.sh
