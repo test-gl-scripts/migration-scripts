@@ -1,0 +1,22 @@
+name: Migrate NuGet Packages
+
+on:
+  workflow_dispatch: 
+  
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up system variables
+        run: |
+          export "GH_SOURCE_PAT=${{ secrets.SRC_PAT }}"
+          export "GH_TARGET_PAT=${{ secrets.DEST_PAT }}"
+
+      - name: Execute migration script
+        run: |
+          chmod +x path/to/migrate-nuget-packages-between-orgs.sh
+          ./path/to/migrate-nuget-packages-between-orgs.sh
