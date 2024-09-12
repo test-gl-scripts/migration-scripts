@@ -91,7 +91,7 @@ echo "$packages" | while IFS= read -r response; do
     sed -i 's|'"$SOURCE_ORG"'|'"$TARGET_ORG"'|g' pom.xml
     # Stage and Commit the pom.xml
     git add pom.xml
-    git commit -m "Update pom.xml to point to $TARGET_ORG"
+    git commit -m "Update pom.xml to point to TARGET_ORG"
     # Push changes to the main branch
     git push origin main
     git push origin --tags
