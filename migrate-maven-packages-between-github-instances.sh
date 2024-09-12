@@ -81,24 +81,19 @@ echo "$packages" | while IFS= read -r response; do
   else
       echo "No main branch exists in the target repository. Skipping pull."
   fi
-git config --global user.name rdesingraj
-git config --global user.email rdesingraj@ceiamerica.com
-echo "Git Setup done"
+# git config --global user.name rdesingraj
+# git config --global user.email rdesingraj@ceiamerica.com
+# echo "Git Setup done"
 
   # Update pom.xml if it exists
   if [ -f pom.xml ]; then
     echo "Updating pom.xml file to replace all instances of $SOURCE_ORG with $TARGET_ORG"
     sed -i 's|'"$SOURCE_ORG"'|'"$TARGET_ORG"'|g' pom.xml
-echo "Updating pom done"
     # Stage and Commit the pom.xml
     git add pom.xml
-echo "git add  done"
     #git commit -m "Update pom.xml to point to $TARGET_ORG"
-
-echo "commit  done"
     # Push changes to the main branch
     git push origin main
-echo "push  done"
     git push origin --tags
   else
     echo "pom.xml file not found in the repo $repo_name"
