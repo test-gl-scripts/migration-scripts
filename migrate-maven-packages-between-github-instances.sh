@@ -65,8 +65,8 @@ echo "$packages" | while IFS= read -r response; do
   fi
 
   # Clone the repository from the source organization
-  echo "Cloning repo from $SOURCE_ORG/$repo_name"
-  git clone "https://$SOURCE_HOST/$SOURCE_ORG/$repo_name.git"
+  echo "Cloning repo from $SOURCE_ORG/$repo_name"  
+  git clone "https://$GH_SOURCE_PAT@github.com/$SOURCE_ORG/$repo_name.git"
 
   cd "$repo_name"
 
