@@ -93,7 +93,7 @@ echo "Updating pom done"
     # Stage and Commit the pom.xml
     git add pom.xml
 echo "git add  done"
-    git commit -m "Update pom.xml to point to $TARGET_ORG"
+    #git commit -m "Update pom.xml to point to $TARGET_ORG"
 
 echo "commit  done"
     # Push changes to the main branch
