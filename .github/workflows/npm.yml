@@ -1,0 +1,22 @@
+name: Migrate NPM Packages
+
+on:
+  workflow_dispatch: 
+  
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up system variables
+        run: |
+          echo "GH_SOURCE_PAT=${{ secrets.SRC_PAT }}" >> $GITHUB_ENV
+          echo "GH_TARGET_PAT=${{ secrets.DEST_PAT }}" >> $GITHUB_ENV
+
+      - name: Execute migration script
+        run: |
+          chmod +x migrate-npm-packages-between-github-instances.sh
+          ./migrate-npm-packages-between-github-instances.sh ${{ secrets.DEST_ORG }} github.com ${{ secrets.SRC_ORG }}  github.com 
