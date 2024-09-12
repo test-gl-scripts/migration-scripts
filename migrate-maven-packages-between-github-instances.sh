@@ -81,9 +81,9 @@ echo "$packages" | while IFS= read -r response; do
   else
       echo "No main branch exists in the target repository. Skipping pull."
   fi
-# git config --global user.name rdesingraj
-# git config --global user.email rdesingraj@ceiamerica.com
-# echo "Git Setup done"
+ git config --global user.name rdesingraj
+ git config --global user.email rdesingraj@ceiamerica.com
+ echo "Git Setup done"
 
   # Update pom.xml if it exists
   if [ -f pom.xml ]; then
