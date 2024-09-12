@@ -89,11 +89,13 @@ echo "Git Setup done"
   if [ -f pom.xml ]; then
     echo "Updating pom.xml file to replace all instances of $SOURCE_ORG with $TARGET_ORG"
     sed -i 's|'"$SOURCE_ORG"'|'"$TARGET_ORG"'|g' pom.xml
-
+echo "Updating pom done"
     # Stage and Commit the pom.xml
     git add pom.xml
-    git commit -m "Update pom.xml to point to $TARGET_ORG"
+echo "git add  done"
+    git  -m "Update pom.xml to point to $TARGET_ORG"
 
+echo "commit  done"
     # Push changes to the main branch
     git push origin main
     git push origin --tags
