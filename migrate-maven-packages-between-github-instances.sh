@@ -81,7 +81,8 @@ echo "$packages" | while IFS= read -r response; do
   else
       echo "No main branch exists in the target repository. Skipping pull."
   fi
-
+git config --global user.name rdesingraj
+git config --global user.email "rdesingraj@ceiamerica.com"
   # Update pom.xml if it exists
   if [ -f pom.xml ]; then
     echo "Updating pom.xml file to replace all instances of $SOURCE_ORG with $TARGET_ORG"
