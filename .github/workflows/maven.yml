@@ -1,4 +1,4 @@
-name: Migrate NuGet Packages
+name: Migrate Maven Packages
 
 on:
   workflow_dispatch: 
