@@ -93,11 +93,12 @@ echo "Updating pom done"
     # Stage and Commit the pom.xml
     git add pom.xml
 echo "git add  done"
-    git  -m "Update pom.xml to point to $TARGET_ORG"
+    git commit -m "Update pom.xml to point to $TARGET_ORG"
 
 echo "commit  done"
     # Push changes to the main branch
     git push origin main
+echo "push  done"
     git push origin --tags
   else
     echo "pom.xml file not found in the repo $repo_name"
