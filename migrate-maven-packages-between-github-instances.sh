@@ -89,12 +89,16 @@ echo "$packages" | while IFS= read -r response; do
   if [ -f pom.xml ]; then
     echo "Updating pom.xml file to replace all instances of $SOURCE_ORG with $TARGET_ORG"
     sed -i 's|'"$SOURCE_ORG"'|'"$TARGET_ORG"'|g' pom.xml
-    # Stage and Commit the pom.xml
-    git add pom.xml
-    git commit -m "Update pom.xml to point to TARGET_ORG"
-    # Push changes to the main branch
-    git push origin main
-    git push origin --tags
+    if git diff --quiet pom.xml; then
+        echo "No changes in pom.xml, skipping commit."
+    else    
+        # Stage and Commit the pom.xml
+        git add pom.xml
+        git commit -m "Update pom.xml to point to TARGET_ORG"
+        # Push changes to the main branch
+        git push origin main
+        git push origin --tags
+    fi
   else
     echo "pom.xml file not found in the repo $repo_name"
   fi
