@@ -72,7 +72,7 @@ echo "$packages" | while IFS= read -r response; do
 
   # Update the remote URL to point to the target organization
   echo "Updating remote to point to target organization"
-  git remote set-url origin "https://$GH_SOURCE_PAT@$TARGET_HOST/$TARGET_ORG/$repo_name.git"
+  git remote set-url origin "https://$GH_TARGET_PAT@$TARGET_HOST/$TARGET_ORG/$repo_name.git"
 
   # Pull latest changes from the target repository if the main branch exists
   if git ls-remote --heads origin main | grep -q 'refs/heads/main'; then
