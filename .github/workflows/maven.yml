@@ -10,7 +10,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
+      - name: Set up GitHub CLI
+        uses: actions/setup-gh@v1
+        with: 
+          token: ${{ secrets.SRC_PAT }}
       - name: Set up system variables
         run: |
           echo "GH_SOURCE_PAT=${{ secrets.SRC_PAT }}" >> $GITHUB_ENV
