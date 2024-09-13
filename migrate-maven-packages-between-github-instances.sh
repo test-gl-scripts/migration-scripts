@@ -39,7 +39,7 @@ auth_target="Authorization: token $GH_TARGET_PAT"
 
 # Fetch the list of Maven packages from the source organization
 packages=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api --paginate "/orgs/$SOURCE_ORG/packages?package_type=maven" -q '.[] | .name + " " + .repository.name')
-
+echo "Packages response: $packages"
 # Check if any packages were fetched
 if [ -z "$packages" ]; then
     echo "No packages found in $SOURCE_ORG"
@@ -62,13 +62,13 @@ echo "$packages" | while IFS= read -r response; do
   echo "org: $SOURCE_ORG repo: $repo_name --> package name $package_name"
 
   # Check if the repository exists in the target organization; if not, create it
-  if ! GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh repo view "$TARGET_ORG/$repo_name" >/dev/null 2>&1
-  then
-    echo "Creating repo $TARGET_ORG/$repo_name"
-    GH_HOST="$TARGET_HOST" gh repo create "$TARGET_ORG/$repo_name" --private
-  else
-    echo "Repo $TARGET_ORG/$repo_name already exists"
-  fi
+  # if ! GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh repo view "$TARGET_ORG/$repo_name" >/dev/null 2>&1
+  # then
+  #   echo "Creating repo $TARGET_ORG/$repo_name"
+  #   GH_HOST="$TARGET_HOST" gh repo create "$TARGET_ORG/$repo_name" --private
+  # else
+  #   echo "Repo $TARGET_ORG/$repo_name already exists"
+  # fi
 
   # Remove existing directory if it exists
   if [ -d "$repo_name" ]; then
@@ -78,13 +78,13 @@ echo "$packages" | while IFS= read -r response; do
 
   # Clone the repository from the source organization
   echo "Cloning repo from $SOURCE_ORG/$repo_name"  
-  git clone "https://$GH_TARGET_PAT@github.com/$SOURCE_ORG/$repo_name.git"
+  git clone "https://$GH_SOURCE_PAT@github.com/$SOURCE_ORG/$repo_name.git"
 
   cd "$repo_name"
 
   # Update the remote URL to point to the target organization
   echo "Updating remote to point to target organization"
-  git remote set-url origin "https://$GH_TARGET_PAT@$TARGET_HOST/$TARGET_ORG/$repo_name.git"
+  git remote set-url origin "https://$GH_SOURCE_PAT@$TARGET_HOST/$TARGET_ORG/$repo_name.git"
 
   # Pull latest changes from the target repository if the main branch exists
   if git ls-remote --heads origin main | grep -q 'refs/heads/main'; then
