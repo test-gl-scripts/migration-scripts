@@ -40,11 +40,6 @@ auth_target="Authorization: token $GH_TARGET_PAT"
 # Fetch the list of Maven packages from the source organization
 packages=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api --paginate "/orgs/$SOURCE_ORG/packages?package_type=maven" -q '.[] | .name + " " + .repository.name')
 echo "Packages response: $packages"
-# Check if any packages were fetched
-if [ -z "$packages" ]; then
-    echo "No packages found in $SOURCE_ORG"
-    exit 1
-fi
 
 # Iterate each package
 echo "$packages" | while IFS= read -r response; do
@@ -53,12 +48,6 @@ echo "$packages" | while IFS= read -r response; do
   package_name=$(echo "$response" | cut -d ' ' -f 1)
   repo_name=$(echo "$response" | cut -d ' ' -f 2)
   
-  # If repo_name is empty, skip
-    if [ -z "$repo_name" ]; then
-        echo "Repository name is empty for package $package_name, skipping..."
-        continue
-    fi
-    
   echo "org: $SOURCE_ORG repo: $repo_name --> package name $package_name"
 
   # Check if the repository exists in the target organization; if not, create it
