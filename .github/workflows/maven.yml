@@ -10,10 +10,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Set up GitHub CLI
-        uses: actions/setup-gh@v1
-        with: 
-          token: ${{ secrets.SRC_PAT }}
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+      - name: Authenticate GitHub CLI with PAT
+        run: |
+          echo "${{ secrets.SRC_PAT }}" | gh auth login --with-token
       - name: Set up system variables
         run: |
           echo "GH_SOURCE_PAT=${{ secrets.SRC_PAT }}" >> $GITHUB_ENV
