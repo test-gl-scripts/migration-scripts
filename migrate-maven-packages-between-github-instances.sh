@@ -130,16 +130,17 @@ echo "$packages" | while IFS= read -r response; do
     package_artifact=$(echo "$package_name" | awk -F'.' '{print $NF}')
 
     name=$(echo $package_group:$package_artifact:$version)
-    echo "   pushing: $name"
+    echo "   downloading: $name"
 
     # Download the Maven package from the source organization
     curl -H "$auth_source" -L -o "${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
       "https://maven.pkg.github.com/${SOURCE_ORG}/download/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
-
+    ls -lt
+    echo "   pushing: $name"
     # Upload the Maven package to the target organization
     curl -X PUT -H "$auth_target" --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
       "https://maven.pkg.github.com/$TARGET_ORG/$repo_name/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
-
+    echo "Version got pushed...${package_artifact}-${version}"
   done
 
   echo "..."
