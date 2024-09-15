@@ -147,10 +147,11 @@ echo "$packages" | while IFS= read -r response; do
     echo "Uploading to: $upload_url"# Define variables
 
 # Upload the Maven package to the target organization
-    # Ensure the repository allows package uploads
-curl -H "Authorization: token <YOUR_PAT>" \
-     -H "Accept: application/vnd.github.v3+json" \
-     https://api.github.com/repos/computerenterprisesinc/maven-sample
+    curl -v -H "Authorization: token $GITHUB_TOKEN" \
+     -H "Content-Type: application/java-archive" \
+     --upload-file "artifacts/maven-package-0.0.1-SNAPSHOT.jar" \
+     https://maven.pkg.github.com/computerenterprisesinc/maven-sample/com/cei/maven-package/0.0.1-SNAPSHOT/maven-package-0.0.1-SNAPSHOT.jar
+
 
     response=$(curl -X PUT -H "Authorization: token $GH_TARGET_PAT" \
   -H "Content-Type: application/java-archive" \
