@@ -137,9 +137,9 @@ echo "$packages" | while IFS= read -r response; do
       "https://maven.pkg.github.com/${SOURCE_ORG}/download/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
     ls -lt
     # Check if the file was created successfully
-    if [ ! -f "${artifacts_dir}/${package_artifact}-${version}.jar" ]; then
-        echo "Warning: Failed to create the file ${artifacts_dir}/${package_artifact}-${version}.jar"
-        continue
+    if [ ! -f "${temp_dir}/artifacts/${package_artifact}-${version}.jar" ]; then
+    echo "Warning: Failed to create the file ${temp_dir}/artifacts/${package_artifact}-${version}.jar"
+    continue
     fi
     
     echo "   pushing: $name"
