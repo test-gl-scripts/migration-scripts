@@ -87,10 +87,10 @@ echo "$packages" | while IFS= read -r response; do
     mvnfeed config stage_dir set --path $temp_dir/artifacts
 
     # Check if $TARGET_ORG/$repo_name exists in GitHub - if not, create it
-    if ! GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh api "/repos/$TARGET_ORG/$repo_name" >/dev/null 2>&1; then
-        echo "Creating repo $TARGET_ORG/$repo_name"
-        GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh repo create "$TARGET_ORG/$repo_name" --private
-    fi
+    # if ! GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh api "/repos/$TARGET_ORG/$repo_name" >/dev/null 2>&1; then
+    #     echo "Creating repo $TARGET_ORG/$repo_name"
+    #     GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh repo create "$TARGET_ORG/$repo_name" --private
+    # fi
 
     # Fetch package versions from the source registry
     versions=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api --paginate "/orgs/$SOURCE_ORG/packages/maven/$package_name/versions" -q '.[] | .name' | sort -V)
