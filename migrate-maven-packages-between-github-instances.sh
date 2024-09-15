@@ -136,11 +136,18 @@ echo "$packages" | while IFS= read -r response; do
     curl -H "$auth_source" -L -o "${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
       "https://maven.pkg.github.com/${SOURCE_ORG}/download/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
     ls -lt
-    echo "   pushing: $name"
-    # Upload the Maven package to the target organization
-    curl -X PUT -H "$auth_target" --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
-      "https://maven.pkg.github.com/$TARGET_ORG/$repo_name/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
-    echo "Version got pushed...${package_artifact}-${version}"
+        echo "   pushing: $name"
+    
+    upload_url="https://maven.pkg.github.com/$TARGET_ORG/$repo_name/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
+    echo "Uploading to: $upload_url"
+    
+    response=$(curl -X PUT -H "$auth_target" --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" "$upload_url" -w "%{http_code}" -o /dev/null -s)
+    
+    if [ "$response" -ne 200 ]; then
+        echo "Upload failed with HTTP status code $response. Check the URL and repository setup."
+    else
+        echo "Version got pushed...${package_artifact}-${version}"
+    fi
   done
 
   echo "..."
