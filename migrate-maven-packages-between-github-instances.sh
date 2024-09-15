@@ -136,7 +136,7 @@ echo "$packages" | while IFS= read -r response; do
     curl -H "$auth_source" -L -o "${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
       "https://maven.pkg.github.com/${SOURCE_ORG}/download/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
     ls -lt
-        echo "   pushing: $name"
+    echo "   pushing: $name"
     
     upload_url="https://maven.pkg.github.com/$TARGET_ORG/$repo_name/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
     echo "Uploading to: $upload_url"
