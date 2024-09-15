@@ -149,10 +149,13 @@ echo "$packages" | while IFS= read -r response; do
 # Upload the Maven package to the target organization
     
     response=$(curl -X PUT -H "Authorization: token $GH_TARGET_PAT" \
-     -H "Content-Type: application/java-archive" \
-     --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
-     "$upload_url" -w "%{http_code}" -o /dev/null -s)
-    
+  -H "Content-Type: application/java-archive" \
+  --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
+  "$upload_url" -w "%{http_code}" -o response.log -s)
+
+    echo "Upload response: $response"
+    cat response.log
+ 
     if [ "$response" -ne 200 ]; then
         echo "Upload failed with HTTP status code $response. Check the URL and repository setup."
     else
