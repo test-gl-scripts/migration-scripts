@@ -4,6 +4,7 @@
 TARGET_ORG="computerenterprisesinc"
 repo_name="maven-sample"
 temp_dir="./temp"
+artifacts_dir="${temp_dir}/artifacts"
 GH_TARGET_PAT="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"
 GH_SOURCE_PAT="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"
 
@@ -14,7 +15,6 @@ mkdir -p "${artifacts_dir}"
 package_group="com.cei"
 package_artifact="maven-package"
 versions=("0.0.1-SNAPSHOT" "0.1.1-SNAPSHOT" "5.1.1-SNAPSHOT")
-
 
 
 for version in "${versions[@]}"; do
