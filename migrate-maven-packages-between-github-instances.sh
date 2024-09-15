@@ -143,7 +143,7 @@ echo "$packages" | while IFS= read -r response; do
     fi
     
     echo "   pushing: $name"
-    upload_url="https://maven.pkg.github.com/$TARGET_ORG/$repo_name/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
+    upload_url="https://maven.pkg.github.com/computerenterprisesinc/maven-sample/com/cei/maven-package/0.0.1-SNAPSHOT/maven-package-0.0.1-SNAPSHOT.jar"
     echo "Uploading to: $upload_url"# Define variables
 
 # Upload the Maven package to the target organization
