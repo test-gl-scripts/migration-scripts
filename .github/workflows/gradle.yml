@@ -1,0 +1,32 @@
+name: Migrate Gradle Packages
+
+on:
+  workflow_dispatch: 
+  
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      # - name: Install GitHub CLI
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y gh
+      - name: Authenticate GitHub CLI with PAT
+        run: |
+          echo "${{ secrets.SRC_PAT }}" | gh auth login --with-token
+      - name: Git configuration values
+        run: |
+            git config --global user.email "${{ secrets.MIGRATION_USER }}"
+            git config --global user.name "${{ secrets.MIGRATION_EMAIL }}"
+      - name: Set up system variables
+        run: |
+          echo "GH_SOURCE_PAT=${{ secrets.SRC_PAT }}" >> $GITHUB_ENV
+          echo "GH_TARGET_PAT=${{ secrets.DEST_PAT }}" >> $GITHUB_ENV
+
+      - name: Execute migration script
+        run: |
+          chmod +x migrate-gradle-packages-between-github-instances.sh
+          ./migrate-gradle-packages-between-github-instances.sh ${{ secrets.SRC_ORG }} github.com ${{ secrets.DEST_ORG }} github.com 
