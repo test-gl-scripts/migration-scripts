@@ -11,8 +11,8 @@ if [ $# -ne "4" ]; then
 fi
 
 # Hardcoded GitHub Personal Access Tokens (WARNING: This is insecure!)
-# GH_SOURCE_PAT="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"
-# GH_TARGET_PAT="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"
+GH_SOURCE_PAT="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"
+GH_TARGET_PAT="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"
 
 # Assign arguments to variables
 SOURCE_ORG=$1
