@@ -1,27 +1,16 @@
 #!/bin/bash
 
 # Usage: ./migrate-maven-packages-between-github-instances.sh <source-org> <source-host> <target-org> <target-host>
-#
-# Prereqs:
-# 1. [gh cli](https://cli.github.com) installed
-# 2. Set the source GitHub PAT env var: `export GH_SOURCE_PAT=ghp_abc` (must have at least `read:packages`, `read:org` scope)
-# 3. Set the target GitHub PAT env var: `export GH_TARGET_PAT=ghp_xyz` (must have at least `write:packages`, `read:org`, `repo` scope)
-#
-# Example: ./migrate-maven-packages-between-github-instances.sh joshjohanning-org github.com joshjohanning-emu github.com
-#
-# Notes:
-# - Until Maven supports the new GitHub Packages type, mvnfeed requires the target repo to exist 
-# - This script creates the repo if it doesn't exist
-# - The `mvnfeed-cli` tool doesn't appear to support copying `.war` files (only `.jar`)
 
 set -e
 
+# Ensure the script is called with exactly 4 arguments
 if [ $# -ne "4" ]; then
     echo "Usage: $0 <source-org> <source-host> <target-org> <target-host>"
     exit 1
 fi
 
-# Make sure env variables are defined
+# Check if GitHub Personal Access Tokens are set
 if [ -z "$GH_SOURCE_PAT" ]; then
     echo "Error: set GH_SOURCE_PAT env var"
     exit 1
@@ -32,87 +21,156 @@ if [ -z "$GH_TARGET_PAT" ]; then
     exit 1
 fi
 
+# Assign arguments to variables
 SOURCE_ORG=$1
 SOURCE_HOST=$2
 TARGET_ORG=$3
 TARGET_HOST=$4
 
-# Create temp dir
+# Create temporary directories for cloning and storing artifacts
 mkdir -p ./temp
 cd ./temp
 temp_dir=$(pwd)
 mkdir -p ./artifacts
 
-# Check if python3 is installed
-if command -v python3 &> /dev/null; then
-    if [ ! -f "./tool/mvnfeed-cli/.marker" ]; then
-        # If the tool doesn't exist, clone it
-        if [ ! -d ./tool/mvnfeed-cli ]; then
-            git clone https://github.com/kenmuse/mvnfeed-cli.git ./tool/mvnfeed-cli
-        fi
+# Set up authorization headers for API requests
+auth_source="Authorization: token $GH_SOURCE_PAT"
+auth_target="Authorization: token $GH_TARGET_PAT"
 
-        # Build the tool and create a marker file if successful
-        cd ./tool/mvnfeed-cli && python3 ./scripts/dev_setup.py && touch .marker && cd $temp_dir
-    fi
-else
-    echo "Error: python3 could not be found"
-    exit 1
+# Fetch the list of Maven packages from the source organization
+packages=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api --paginate "/orgs/$SOURCE_ORG/packages?package_type=maven" -q '.[] | .name + " " + .repository.name')
+echo "Packages response: $packages"
+# Check if any packages were fetched
+if [ -z "$packages" ]; then
+    echo "No packages found in $SOURCE_ORG"
+    exit 0
 fi
 
-# Base64 encode auth for mvnfeed
-auth_source=$(echo -n "user:$GH_SOURCE_PAT" | base64 -w0)
-auth_target=$(echo -n "user:$GH_TARGET_PAT" | base64 -w0)
-
-# Fetch the list of packages
-packages=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api --paginate "/orgs/$SOURCE_ORG/packages?package_type=maven" -q '.[] | .name + " " + .repository.name')
-
+# Iterate each package
 echo "$packages" | while IFS= read -r response; do
-    package_name=$(echo "$response" | cut -d ' ' -f 1)
-    repo_name=$(echo "$response" | cut -d ' ' -f 2)
 
-    echo "org: $SOURCE_ORG repo: $repo_name --> package name $package_name"
+  # Extract package name and repository name
+  package_name=$(echo "$response" | cut -d ' ' -f 1)
+  repo_name=$(echo "$response" | cut -d ' ' -f 2)
+  
+  # If repo_name is empty, skip
+    if [ -z "$repo_name" ]; then
+        echo "Repository name is empty for package $package_name, skipping..."
+        continue
+    fi
+    
+  echo "org: $SOURCE_ORG repo: $repo_name --> package name $package_name"
 
-    # Set up source and target registries for mvnfeed
-    mvnfeed config repo list >/dev/null 2>&1 || true
-    rm ~/.mvnfeed/mvnfeed.ini || true
-    echo "[repository.githubsource]" >> ~/.mvnfeed/mvnfeed.ini
-    echo "url = https://maven.pkg.github.com/${SOURCE_ORG}/download" >> ~/.mvnfeed/mvnfeed.ini
-    echo "authorization = Basic $auth_source" >> ~/.mvnfeed/mvnfeed.ini
-    echo "" >> ~/.mvnfeed/mvnfeed.ini
-    echo "[repository.githubtarget]" >> ~/.mvnfeed/mvnfeed.ini
-    echo "url = https://maven.pkg.github.com/$TARGET_ORG/$repo_name" >> ~/.mvnfeed/mvnfeed.ini
-    echo "authorization = Basic $auth_target" >> ~/.mvnfeed/mvnfeed.ini
-    echo "" >> ~/.mvnfeed/mvnfeed.ini
+  # Check if the repository exists in the target organization; if not, create it
+ #  if ! GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh repo view "$TARGET_ORG/$repo_name" >/dev/null 2>&1
+ #  then
+ #    echo "Creating repo $TARGET_ORG/$repo_name"
+ #    GH_HOST="$TARGET_HOST" gh repo create "$TARGET_ORG/$repo_name" --private
+ #  else
+ #    echo "Repo $TARGET_ORG/$repo_name already exists"
+ #  fi
 
-    mvnfeed config stage_dir set --path $temp_dir/artifacts
+ #  # Remove existing directory if it exists
+ #  if [ -d "$repo_name" ]; then
+ #      echo "Removing existing directory $repo_name"
+ #      rm -rf "$repo_name"
+ #  fi
 
-    # Check if $TARGET_ORG/$repo_name exists in GitHub - if not, create it
-    # if ! GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh api "/repos/$TARGET_ORG/$repo_name" >/dev/null 2>&1; then
-    #     echo "Creating repo $TARGET_ORG/$repo_name"
-    #     GH_HOST="$TARGET_HOST" GH_TOKEN=$GH_TARGET_PAT gh repo create "$TARGET_ORG/$repo_name" --private
-    # fi
+ #  # Clone the repository from the source organization
+ #  echo "Cloning repo from $SOURCE_ORG/$repo_name"  
+ #  git clone "https://$GH_SOURCE_PAT@github.com/$SOURCE_ORG/$repo_name.git"
 
-    # Fetch package versions from the source registry
-    versions=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api --paginate "/orgs/$SOURCE_ORG/packages/maven/$package_name/versions" -q '.[] | .name' | sort -V)
-    for version in $versions; do
-        package_group=$(echo "$package_name" | rev | cut -d '.' -f 2- | rev)
-        package_artifact=$(echo "$package_name" | rev | cut -d '.' -f 1 | rev)
+ #  cd "$repo_name"
 
-        name=$(echo $package_group:$package_artifact:$version)
-        echo "   pushing: $name"
+ #  # Update the remote URL to point to the target organization
+ #  echo "Updating remote to point to target organization"
+ #  git remote set-url origin "https://$GH_SOURCE_PAT@$TARGET_HOST/$TARGET_ORG/$repo_name.git"
 
-        # Debugging output
-        echo "Transferring package ${package_group}:${package_artifact}:${version} from ${SOURCE_ORG} to ${TARGET_ORG}"
+ #  # Pull latest changes from the target repository if the main branch exists
+ #  if git ls-remote --heads origin main | grep -q 'refs/heads/main'; then
+ #      echo "Pulling latest changes from target repository"
+ #      git pull origin main --rebase
+ #  else
+ #      echo "No main branch exists in the target repository. Skipping pull."
+ #  fi
+ # git config --global user.name rdesingraj
+ # git config --global user.email rdesingraj@ceiamerica.com
+ # echo "Git Setup done"
 
-        mvnfeed artifact transfer --from=githubsource --to=githubtarget --name="${package_group}:${package_artifact}:${version}"
+ #  # Update pom.xml if it exists
+ #  if [ -f pom.xml ]; then
+ #    echo "Updating pom.xml file to replace all instances of $SOURCE_ORG with $TARGET_ORG"
+ #    sed -i 's|'"$SOURCE_ORG"'|'"$TARGET_ORG"'|g' pom.xml
+ #    if git diff --quiet pom.xml; then
+ #        echo "No changes in pom.xml, skipping commit."
+ #    else    
+ #        # Stage and Commit the pom.xml
+ #        git add pom.xml
+ #        git commit -m "Update pom.xml to point to TARGET_ORG"
+ #        # Push changes to the main branch
+ #        git push origin main
+ #        git push origin --tags
+ #    fi
+ #  else
+ #    echo "pom.xml file not found in the repo $repo_name"
+ #  fi
 
-        if [ $? -ne 0 ]; then
-            echo "Error transferring package ${package_group}:${package_artifact}:${version}"
-        fi
-    done
+ #  # Push to all branches
+ #  git push origin --all
+ #  cd ..
 
-    echo "..."
+ #  echo "Repo $SOURCE_ORG/$repo_name cloned, pom.xml updated (if found), and pushed to $TARGET_ORG/$repo_name"
+
+  # Fetch Maven package versions from the source organization
+  versions=$(GH_HOST="$SOURCE_HOST" GH_TOKEN=$GH_SOURCE_PAT gh api --paginate "orgs/$SOURCE_ORG/packages/maven/$package_name/versions" -q '.[] | .name' | sort -V)
+  for version in $versions
+  do
+    # Determine the package group and artifact names
+    package_group=$(echo "$package_name" | awk -F'.' '{OFS="."; $NF=""; print substr($0,1,length($0)-1)}')
+    package_artifact=$(echo "$package_name" | awk -F'.' '{print $NF}')
+
+    name=$(echo $package_group:$package_artifact:$version)
+    echo "   downloading: $name"
+
+    # Download the Maven package from the source organization
+    curl -H "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" -L -o "${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
+      "https://maven.pkg.github.com/${SOURCE_ORG}/download/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
+    ls -lt
+    # Check if the file was created successfully
+    if [ ! -f "${temp_dir}/artifacts/${package_artifact}-${version}.jar" ]; then
+    echo "Warning: Failed to create the file ${temp_dir}/artifacts/${package_artifact}-${version}.jar"
+    continue
+    fi
+    
+    echo "   pushing: $name"
+    upload_url="https://maven.pkg.github.com/computerenterprisesinc/maven-sample/com/cei/maven-package/0.0.1-SNAPSHOT/maven-package-0.0.1-SNAPSHOT.jar"
+    echo "Uploading to: $upload_url"# Define variables
+
+# Upload the Maven package to the target organization
+    curl -v -H "Authorization: token $GITHUB_TOKEN" \
+     -H "Content-Type: application/java-archive" \
+     --upload-file "artifacts/maven-package-0.0.1-SNAPSHOT.jar" \
+     https://maven.pkg.github.com/computerenterprisesinc/maven-sample/com/cei/maven-package/0.0.1-SNAPSHOT/maven-package-0.0.1-SNAPSHOT.jar
+
+
+    response=$(curl -X PUT -H "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" \
+  -H "Content-Type: application/java-archive" \
+  --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
+  "$upload_url" -w "%{http_code}" -o response.log -s)
+
+    echo "Upload response: $response"
+    cat response.log
+ 
+    if [ "$response" -ne 200 ]; then
+        echo "Upload failed with HTTP status code $response. Check the URL and repository setup."
+    else
+        echo "Version got pushed...${package_artifact}-${version}"
+    fi
+  done
+
+  echo "..."
 
 done
 
+# Clean up temporary files
 echo "Run this to clean up your working dir: rm -rf ./temp"
