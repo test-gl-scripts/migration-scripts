@@ -10,16 +10,9 @@ if [ $# -ne "4" ]; then
     exit 1
 fi
 
-# Check if GitHub Personal Access Tokens are set
-if [ -z "$GH_SOURCE_PAT" ]; then
-    echo "Error: set GH_SOURCE_PAT env var"
-    exit 1
-fi
-
-if [ -z "$GH_TARGET_PAT" ]; then
-    echo "Error: set GH_TARGET_PAT env var"
-    exit 1
-fi
+# Hardcoded GitHub Personal Access Tokens (WARNING: This is insecure!)
+GH_SOURCE_PAT="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"
+GH_TARGET_PAT="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"
 
 # Assign arguments to variables
 SOURCE_ORG=$1
@@ -133,39 +126,14 @@ echo "$packages" | while IFS= read -r response; do
     echo "   downloading: $name"
 
     # Download the Maven package from the source organization
-    curl -H "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" -L -o "${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
+    curl -H "$auth_source" -L -o "${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
       "https://maven.pkg.github.com/${SOURCE_ORG}/download/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
     ls -lt
-    # Check if the file was created successfully
-    if [ ! -f "${temp_dir}/artifacts/${package_artifact}-${version}.jar" ]; then
-    echo "Warning: Failed to create the file ${temp_dir}/artifacts/${package_artifact}-${version}.jar"
-    continue
-    fi
-    
     echo "   pushing: $name"
-    upload_url="https://maven.pkg.github.com/computerenterprisesinc/maven-sample/com/cei/maven-package/0.0.1-SNAPSHOT/maven-package-0.0.1-SNAPSHOT.jar"
-    echo "Uploading to: $upload_url"# Define variables
-
-# Upload the Maven package to the target organization
-    curl -v -H "Authorization: token $GITHUB_TOKEN" \
-     -H "Content-Type: application/java-archive" \
-     --upload-file "artifacts/maven-package-0.0.1-SNAPSHOT.jar" \
-     https://maven.pkg.github.com/computerenterprisesinc/maven-sample/com/cei/maven-package/0.0.1-SNAPSHOT/maven-package-0.0.1-SNAPSHOT.jar
-
-
-    response=$(curl -X PUT -H "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" \
-  -H "Content-Type: application/java-archive" \
-  --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
-  "$upload_url" -w "%{http_code}" -o response.log -s)
-
-    echo "Upload response: $response"
-    cat response.log
- 
-    if [ "$response" -ne 200 ]; then
-        echo "Upload failed with HTTP status code $response. Check the URL and repository setup."
-    else
-        echo "Version got pushed...${package_artifact}-${version}"
-    fi
+    # Upload the Maven package to the target organization
+    curl -X PUT -H "$auth_target" --data-binary "@${temp_dir}/artifacts/${package_artifact}-${version}.jar" \
+      "https://maven.pkg.github.com/$TARGET_ORG/$repo_name/${package_group}/${package_artifact}/${version}/${package_artifact}-${version}.jar"
+    echo "Version got pushed...${package_artifact}-${version}"
   done
 
   echo "..."
