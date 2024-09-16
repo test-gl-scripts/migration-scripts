@@ -66,13 +66,13 @@ echo "$packages" | while IFS= read -r response; do
 
   # Clone the repository from the source organization
   echo "Cloning repo from $SOURCE_ORG/$repo_name"
-  git clone "https://$SOURCE_HOST/$SOURCE_ORG/$repo_name.git"
+  git clone "https://$GH_SOURCE_PAT@github.com/$SOURCE_ORG/$repo_name.git"
   
   cd "$repo_name"
 
   # Update the remote URL to point to the target organization
   echo "Updating remote to point to target organization"
-  git remote set-url origin "https://$TARGET_HOST/$TARGET_ORG/$repo_name.git"
+  git remote set-url origin "https://$GH_SOURCE_PAT@$TARGET_HOST/$TARGET_ORG/$repo_name.git"
     
   # Pull latest changes from the target repository if the main branch exists
   if git ls-remote --heads origin main | grep -q 'refs/heads/main'; then
