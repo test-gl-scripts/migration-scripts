@@ -17,15 +17,15 @@ jobs:
       - name: Verify installation
         run: gh actions-importer version
 
-      - name: Configure GitHub Actions Importer for GitLab
-        env:
-          GITHUB_TOKEN: GITHUB_PAT
-          GITLAB_TOKEN: secrets.GITLAB_PAT
-          GITHUB_URL: https://github.com
-          GITLAB_URL: https://gitlab.com
-        run: |
-          # Provide inputs programmatically to avoid interactive prompts
-          echo -e "GitLab\n$GITHUB_TOKEN\n$GITHUB_URL\n$GITLAB_TOKEN\n$GITLAB_URL" | gh actions-importer configure --ci gitlab
+      # - name: Configure GitHub Actions Importer for GitLab
+      #   env:
+      #     GITHUB_TOKEN: GITHUB_PAT
+      #     GITLAB_TOKEN: secrets.GITLAB_PAT
+      #     GITHUB_URL: https://github.com
+      #     GITLAB_URL: https://gitlab.com
+      #   run: |
+      #     # Provide inputs programmatically to avoid interactive prompts
+      #     echo -e "GitLab\n$GITHUB_TOKEN\n$GITHUB_URL\n$GITLAB_TOKEN\n$GITLAB_URL" | gh actions-importer configure --ci gitlab
 
 
       - name: Export GitLab CI pipelines
