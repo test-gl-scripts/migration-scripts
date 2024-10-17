@@ -11,8 +11,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install GitHub Actions Importer
-        run: gh extension install github/gh-actions-importer
+      # - name: Install GitHub Actions Importer
+      #   run: gh extension install github/gh-actions-importer
 
       - name: Verify installation
         run: gh actions-importer version
