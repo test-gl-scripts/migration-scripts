@@ -1,0 +1,47 @@
+name: Pipeline Migrations
+on: 
+  workflow_dispatch
+env:
+  GH_TOKEN: ${{ github.token }}  
+jobs:
+  migrate-pipeline:
+    runs-on: [self-hosted, desing]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install GitHub Actions Importer
+        run: gh extension install github/gh-actions-importer
+
+      - name: Verify installation
+        run: gh actions-importer version
+
+      - name: Configure GitHub Actions Importer for GitLab
+        env:
+          GITHUB_TOKEN: GITHUB_PAT
+          GITLAB_TOKEN: secrets.GITLAB_PAT
+          GITHUB_URL: https://github.com
+          GITLAB_URL: https://gitlab.com
+        run: |
+          # Provide inputs programmatically to avoid interactive prompts
+          echo -e "GitLab\n$GITHUB_TOKEN\n$GITHUB_URL\n$GITLAB_TOKEN\n$GITLAB_URL" | gh actions-importer configure --ci gitlab
+
+
+      - name: Export GitLab CI pipelines
+        run: gh actions-importer audit gitlab --output-dir tmp/audit --namespace batteryhealthagi
+
+      # - name: Translate pipelines to GitHub Actions
+      #   run: |
+      #     gh actions-importer translate \
+      #       --platform gitlab \
+      #       --input ./export/ \
+      #       --output ./.github/workflows/
+
+      # - name: Commit and push workflows
+      #   run: |
+      #     git config --global user.name "GitHub Actions"
+      #     git config --global user.email "actions@github.com"
+      #     git add .github/workflows/*
+      #     git commit -m "Migrate GitLab CI to GitHub Actions workflows"
+      #     git push origin main
