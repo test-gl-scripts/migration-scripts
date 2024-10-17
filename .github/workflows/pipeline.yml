@@ -5,7 +5,7 @@ env:
   GH_TOKEN: ${{ github.token }}  
 jobs:
   migrate-pipeline:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64, desing]
     
     steps:
       - name: Checkout repository
